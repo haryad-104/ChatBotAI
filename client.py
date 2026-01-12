@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import json
 import time
+import os
 
 # --- 1. CONFIG & SECRETS ---
 try:
@@ -9,98 +10,213 @@ try:
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
     GEMINI_API_KEY = st.secrets["GEMINI_KEY"]
 except:
-    st.error("⚠️ کلیلەکان بە دروستی ڕێنەخراون.")
+    st.error("⚠️ کلیلەکان نەدۆزرانەوە. تکایە Secrets ڕێکبخە.")
     st.stop()
 
-HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
+HEADERS = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json"
+}
 
-# --- 2. MOBILE-FIRST RESPONSIVE UI (CSS) ---
-st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="centered")
+# --- 2. UI CONFIGURATION ---
+st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="wide", initial_sidebar_state="expanded")
 
+# --- 3. ADVANCED CSS STYLING (MATCHING SCREENSHOTS) ---
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700;900&display=swap');
         
-        /* ستایلی گشتی */
-        html, body, [class*="css"] {
-            font-family: 'Noto Sans Arabic', sans-serif;
-            direction: rtl;
-            background-color: #f9fafb;
+        * {
+            font-family: 'Vazirmatn', sans-serif;
+            box-sizing: border-box;
+        }
+        
+        /* ڕەنگی باکگراوندی گشتی */
+        .stApp {
+            background-color: #F8F9FA;
         }
 
-        /* چاککردنی سایدبار بۆ مۆبایل */
+        /* --- 1. LOGIN PAGE STYLING --- */
+        /* شاردنەوەی سایدبار لە کاتی Login */
         [data-testid="stSidebar"] {
-            background-color: #0f172a !important;
+            display: none;
+        }
+        
+        /* کارتەکەی ناوەڕاست */
+        .login-container {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            text-align: center;
+            max-width: 400px;
+            margin: 50px auto;
+            direction: rtl;
+        }
+        
+        .login-icon {
+            font-size: 50px;
+            background: linear-gradient(135deg, #FF6600, #FF3366);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .login-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+        
+        .login-subtitle {
+            font-size: 14px;
+            color: #6B7280;
+            margin-bottom: 30px;
+        }
+        
+        /* ئینپوتەکان */
+        .stTextInput input {
+            background-color: #F3F4F6;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 10px 15px;
+            text-align: right;
+            direction: rtl;
+            color: #111827;
+        }
+        
+        /* دوگمەی چوونەژوورەوە (ڕەش) */
+        .stButton button {
+            background-color: #111827 !important;
+            color: white !important;
+            border-radius: 12px !important;
+            padding: 12px 0 !important;
+            font-weight: bold !important;
+            border: none !important;
+            width: 100%;
+            transition: all 0.3s;
+        }
+        .stButton button:hover {
+            background-color: #000000 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* --- 2. SIDEBAR STYLING (Dark Blue) --- */
+        section[data-testid="stSidebar"] {
+            display: block !important; /* پیشاندانی سایدبار دوای چوونەژوورەوە */
+            background-color: #0F172A !important; /* Dark Blue */
             color: white !important;
         }
-        [data-testid="stSidebar"] * { color: white !important; }
+        
+        section[data-testid="stSidebar"] h1, 
+        section[data-testid="stSidebar"] h2, 
+        section[data-testid="stSidebar"] h3, 
+        section[data-testid="stSidebar"] p, 
+        section[data-testid="stSidebar"] span,
+        section[data-testid="stSidebar"] div {
+            color: white !important;
+        }
 
-        /* --- زیرەککردنی دوگمەی پاشکۆ (Floating Action Button) --- */
+        /* ڕادیۆ بەتەنەکان (Menu Items) */
+        .stRadio label {
+            color: white !important;
+            background: transparent;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .stRadio label:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* پڕۆگرێس باڕی باڵانس */
+        .stProgress > div > div > div > div {
+            background-color: #FF6600 !important; /* ڕەنگی نارنجی */
+        }
+
+        /* --- 3. MAIN CHAT AREA --- */
+        /* هێدەر */
+        header[data-testid="stHeader"] {
+            background: transparent;
+        }
+
+        /* بۆشایی ناوەڕاست (Empty State - Brain Icon) */
+        .hero-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 60vh;
+            text-align: center;
+            color: #9CA3AF;
+        }
+        
+        .hero-icon {
+            font-size: 80px;
+            color: #A855F7; /* Purple */
+            background: #F3E8FF;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 40px;
+            margin-bottom: 20px;
+        }
+
+        .hero-text {
+            font-size: 22px;
+            font-weight: bold;
+            color: #D1D5DB;
+        }
+        
+        /* Chat Messages */
+        .stChatMessage {
+            direction: rtl;
+            text-align: right;
+        }
+
+        /* --- 4. FLOATING BUTTON (Attachment) --- */
         [data-testid="stPopover"] {
             position: fixed !important;
-            z-index: 1000;
-        }
-
-        /* Desktop Mode */
-        @media only screen and (min-width: 769px) {
-            [data-testid="stPopover"] {
-                bottom: 100px !important;
-                right: calc(50% - 380px) !important;
-            }
-        }
-
-        /* Mobile & Tablet Mode (ڕێکخستنی شوێنی دوگمەکە بۆ مۆبایل) */
-        @media only screen and (max-width: 768px) {
-            [data-testid="stPopover"] {
-                bottom: 85px !important;
-                right: 20px !important;
-            }
-            .expert-header { padding: 10px 15px !important; }
-            .expert-header h3 { font-size: 16px !important; }
-        }
-
-        [data-testid="stPopover"] button {
-            background: linear-gradient(135deg, #FF6600 0%, #E65C00 100%) !important;
-            color: white !important;
+            bottom: 100px !important;
+            right: 30px !important;
+            z-index: 9999;
+            background-color: white !important;
             border-radius: 50% !important;
             width: 50px !important;
             height: 50px !important;
-            border: 2px solid white !important;
-            box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4) !important;
-        }
-
-        /* کارتەکانی باڵانس (Responsive Stats) */
-        .stat-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            flex: 1;
-            min-width: 140px;
-            background: white;
-            padding: 15px;
-            border-radius: 15px;
-            border: 1px solid #e5e7eb;
-            text-align: center;
-        }
-
-        /* سەردێڕی پسپۆڕەکان */
-        .expert-header {
-            background: white;
-            padding: 20px;
-            border-radius: 20px;
-            border-right: 6px solid #FF6600;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 2px solid #E5E7EB !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
         
-        footer {visibility: hidden;}
+        [data-testid="stPopover"] button {
+            color: #6B7280 !important;
+            font-size: 20px !important;
+            padding: 0 !important;
+            border: none !important;
+        }
+        
+        /* Mobile Adjustments */
+        @media only screen and (max-width: 600px) {
+            [data-testid="stPopover"] {
+                bottom: 90px !important;
+                right: 20px !important;
+            }
+            .login-container {
+                margin: 20px;
+                padding: 20px;
+            }
+        }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS (Stay Efficient) ---
+# --- 4. HELPER FUNCTIONS ---
 @st.cache_data(ttl=300)
 def get_user_data(username):
     try:
@@ -109,114 +225,126 @@ def get_user_data(username):
         return res.json()[0] if res.status_code == 200 and res.json() else None
     except: return None
 
-def update_tokens(username, new_total):
-    requests.patch(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", headers=HEADERS, json={"used_tokens": new_total})
+def update_tokens_db(username, new_total):
+    requests.patch(f"{SUPABASE_URL}/rest/v1/users?username=eq.{username}", 
+                   headers=HEADERS, json={"used_tokens": new_total})
     get_user_data.clear()
 
 def save_chat(username, role, content, expert):
-    requests.post(f"{SUPABASE_URL}/rest/v1/chat_history", headers=HEADERS, json={"username": username, "role": role, "content": content, "expert": expert})
+    requests.post(f"{SUPABASE_URL}/rest/v1/chat_history", headers=HEADERS, 
+                  json={"username": username, "role": role, "content": content, "expert": expert})
 
-def get_ai_response(prompt, history, expert_name):
-    # (Simplified Expert Brain)
-    expert_instruction = f"You are an AI expert in {expert_name}. Answer precisely in Kurdish Sorani."
+def get_expert_prompt(expert_name):
+    # مێشکی پسپۆڕەکان
+    prompts = {
+        "🧠 مێشکی کۆرسەکە": "Role: Course Expert. Answer solely based on the course content.",
+        "🗣️ وەرگێڕی بازرگانی": "Role: Professional Translator (Kurdish/English). Formal tone.",
+        "📐 حاسیبەی لۆجستی": "Role: Logistics Calculator. Calculate CBM and Volumetric weight accurately.",
+        "✍️ ستراتیژیستی ناوەڕۆک": "Role: Content Strategist. Creative and viral ideas.",
+        "📈 ڕاپۆرتی نهێنی": "Role: Market Analyst. Use provided report data only."
+    }
+    for key in prompts:
+        if key in expert_name: return prompts[key]
+    return "Role: Helpful Assistant."
+
+def get_ai_response(prompt, history, expert_prompt):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     contents = []
-    for msg in history[-6:]: contents.append({"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg['content']}]})
-    contents.append({"role": "user", "parts": [{"text": f"{expert_instruction}\nInput: {prompt}"}]})
+    for msg in history[-6:]: 
+        contents.append({"role": "user" if msg['role'] == "user" else "model", "parts": [{"text": msg['content']}]})
+    contents.append({"role": "user", "parts": [{"text": f"Instruction: {expert_prompt}\nInput: {prompt}"}]})
+    
     try:
         res = requests.post(url, headers={'Content-Type': 'application/json'}, data=json.dumps({"contents": contents}))
-        data = res.json()
-        return data['candidates'][0]['content']['parts'][0]['text'], data.get('usageMetadata', {}).get('totalTokenCount', 0)
-    except: return "🔴 کێشەیەکی کاتی هەیە.", 0
+        if res.status_code == 200:
+            data = res.json()
+            return data['candidates'][0]['content']['parts'][0]['text'], data.get('usageMetadata', {}).get('totalTokenCount', 0)
+        return "⚠️ سێرڤەر وەڵامی نییە.", 0
+    except: return "🚫 کێشەی تەکنیکی.", 0
 
-# --- 4. MAIN APP LOGIC ---
+# --- 5. MAIN APP ---
 def main():
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
+    # --- PART 1: LOGIN PAGE (Custom UI) ---
     if not st.session_state.logged_in:
-        # چوونەژوورەوەی سادە و جوان
-        st.markdown("<h1 style='text-align:center; color:#FF6600;'>🦁 بازرگانی زیرەک</h1>", unsafe_allow_html=True)
-        u = st.text_input("Username").strip()
-        p = st.text_input("Password", type="password").strip()
-        if st.button("چوونەژوورەوە", use_container_width=True):
-            user = get_user_data(u)
-            if user and str(user['password']) == str(p):
-                st.session_state.logged_in, st.session_state.username = True, u
-                st.rerun()
-            else: st.error("زانیارییەکان هەڵەن")
+        # لێرەدا CSSـی تایبەت بە Login کار دەکات
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("""
+                <div class="login-container">
+                    <div class="login-icon">🦁</div>
+                    <div class="login-title">بەخێربێیتەوە</div>
+                    <div class="login-subtitle">تکایە زانیارییەکانت بنووسە</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # فۆڕمی چوونەژوورەوە لەناو کۆڵۆمەکە
+            with st.form("login_form"):
+                u = st.text_input("نازناو")
+                p = st.text_input("وشەی نهێنی", type="password")
+                submitted = st.form_submit_button("چوونەژوورەوە")
+                
+                if submitted:
+                    user = get_user_data(u.strip())
+                    if user and str(user['password']) == str(p.strip()):
+                        st.session_state.logged_in = True
+                        st.session_state.username = u.strip()
+                        st.rerun()
+                    else:
+                        st.error("زانیاری هەڵەیە")
         return
 
-    # زانیاری بەکارهێنەر
+    # --- PART 2: DASHBOARD (APP MODE) ---
+    # گۆڕینی ستایل بۆ دۆخی ئەپ (Sidebar دەردەکەوێت)
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] { display: block !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
     user = get_user_data(st.session_state.username)
-    balance = user['token_limit'] - user['used_tokens']
+    if not user: st.stop()
+    used, limit = user['used_tokens'], user['token_limit']
+    balance_left = limit - used
 
-    # سایدباری زیرەک
+    # --- SIDEBAR (Dark Blue & Icons) ---
     with st.sidebar:
-        st.markdown(f"### 👋 {st.session_state.username}")
-        expert = st.radio("بەشەکان:", ["🧠 مێشکی کۆرسەکە", "🗣️ وەرگێڕی بازرگانی", "📐 حاسیبەی لۆجستی", "✍️ ستراتیژیستی ناوەڕۆک", "📈 ڕاپۆرتی مانگانە", "📊 باڵانسی من"])
+        st.markdown(f"<h3 style='text-align:center; margin-top:0;'>Zirak AI <span style='font-size:12px; opacity:0.7;'>PRO</span></h3>", unsafe_allow_html=True)
+        st.write("") # Space
+        
+        expert = st.radio("بەشەکان", [
+            "🧠 مێشکی کۆرسەکە", 
+            "🗣️ وەرگێڕی بازرگانی", 
+            "📐 حاسیبەی لۆجستی", 
+            "✍️ ستراتیژیستی ناوەڕۆک", 
+            "📈 ڕاپۆرتی نهێنی"
+        ], label_visibility="collapsed")
+        
         st.divider()
-        if st.button("Logout", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    # لاپەڕەی باڵانس (Responsive Cards)
-    if expert == "📊 باڵانسی من":
-        st.title("📊 دۆخی هەژمار")
+        
+        # بەشی باڵانس (Progress Bar)
         st.markdown(f"""
-            <div class="stat-container">
-                <div class="stat-card">
-                    <p style="color:gray; font-size:12px;">پاکێج</p>
-                    <p style="font-weight:bold;">{user['plan']}</p>
-                </div>
-                <div class="stat-card">
-                    <p style="color:gray; font-size:12px;">تۆکنی ماوە</p>
-                    <p style="color:#FF6600; font-weight:bold; font-size:20px;">{balance:,}</p>
+            <div style='background:rgba(255,255,255,0.05); padding:15px; border-radius:12px;'>
+                <div style='display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;'>
+                    <span>پاکێجی Pro</span>
+                    <span style='color:#FF6600;'>{balance_left} ماوە</span>
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        st.progress(min(user['used_tokens']/user['token_limit'], 1.0))
-        return
+        st.progress(min(used/limit, 1.0))
+        
+        st.write("")
+        if st.button("چوونەدەرەوە"):
+            st.session_state.logged_in = False
+            st.rerun()
 
-    # ڕووکاری چات
-    st.markdown(f"<div class='expert-header'><h3>{expert}</h3></div>", unsafe_allow_html=True)
-
-    if "messages" not in st.session_state or st.session_state.get("last_expert") != expert:
-        st.session_state.messages = []
+    # --- MAIN CONTENT ---
+    
+    # Initialize Messages
+    if "messages" not in st.session_state: st.session_state.messages = []
+    if "last_expert" not in st.session_state or st.session_state.last_expert != expert:
+        st.session_state.messages = [] 
         st.session_state.last_expert = expert
 
-    for m in st.session_state.messages:
-        with st.chat_message(m["role"], avatar="🦁" if m["role"]=="assistant" else "👤"):
-            st.markdown(m["content"])
-
-    # دوگمەی پاشکۆی فایل (Responsive Popover)
-    with st.popover("📎"):
-        st.file_uploader("بارکردنی فایل", type=['png','jpg','pdf'])
-        st.camera_input("وێنەگرتن")
-
-    # ناردنی نامە
-    if balance > 0:
-        if prompt := st.chat_input("پرسیارەکەت بنووسە..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user", avatar="👤"): st.markdown(prompt)
-
-            with st.chat_message("assistant", avatar="🦁"):
-                res_box = st.empty()
-                with st.spinner("..."):
-                    ans, cost = get_ai_response(prompt, st.session_state.messages[:-1], expert)
-                    # Typing Effect
-                    full_res = ""
-                    for word in ans.split():
-                        full_res += word + " "
-                        res_box.markdown(full_res + "▌")
-                        time.sleep(0.02)
-                    res_box.markdown(full_res)
-
-            st.session_state.messages.append({"role": "assistant", "content": full_res})
-            save_chat(st.session_state.username, "user", prompt, expert)
-            save_chat(st.session_state.username, "assistant", full_res, expert)
-            update_tokens(st.session_state.username, user['used_tokens'] + cost)
-    else:
-        st.error("⚠️ باڵانست تەواو بووە.")
-
-if __name__ == "__main__":
-    main()
+    # Header
