@@ -4,17 +4,13 @@ import json
 import os
 import time
 
-# --- 1. CONFIG & SECRETS (تەنها لە Secrets دەخوێنێتەوە) ---
+# --- 1. CONFIG & SECRETS ---
 try:
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
     GEMINI_API_KEY = st.secrets["GEMINI_KEY"]
-except FileNotFoundError:
-    st.error("🛑 کلیلەکان نەدۆزرانەوە! تکایە فایلەکەت ببەستەوە بە Secrets.")
-    st.info("لەسەر لاپتۆپ: فایلی .streamlit/secrets.toml دروست بکە.\nلە ئینتەرنێت: بچۆ Settings > Secrets.")
-    st.stop()
-except Exception as e:
-    st.error(f"هەڵەیەک هەیە: {e}")
+except:
+    st.error("⚠️ کلیلەکان نەدۆزرانەوە. تکایە Secrets ڕێکبخە.")
     st.stop()
 
 HEADERS = {
@@ -23,8 +19,10 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# --- 2. UI & CSS HACKS (Mobile Friendly) ---
-st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="centered", initial_sidebar_state="collapsed")
+# --- 2. UI & CSS HACKS (SIDEBAR FIXED) ---
+# گۆڕانکاری گرنگ: لێرە کردمان بە "expanded"
+# ئەمە وا دەکات لە لاپتۆپ کراوە بێت، بەڵام لە مۆبایل دەبێتە مێنۆ
+st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="centered", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
@@ -35,56 +33,75 @@ st.markdown("""
             direction: rtl;
         }
         
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        
-        /* --- Smart Floating Button --- */
-        [data-testid="stPopover"] {
-            position: fixed;
-            z-index: 9999;
-            background-color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #FF6600;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
+        /* شاردنەوەی باکگراوندی هێدەر بەبێ شاردنەوەی دوگمەکان */
+        header[data-testid="stHeader"] {
+            background-color: transparent;
+            z-index: 1;
+        }
+        /* دڵنیابوون لەوەی دوگمەی مێنۆ (سێ هێڵەکە) دیار بێت */
+        [data-testid="stSidebarCollapsedControl"] {
+            display: block !important;
+            color: #FF6600 !important;
         }
         
-        /* Laptop Style */
+        footer {visibility: hidden;}
+        
+        /* --- دوگمەی فایل (Smart Floating Button) --- */
+        [data-testid="stPopover"] {
+            position: fixed !important;
+            z-index: 999999 !important;
+            background-color: white !important;
+            border-radius: 50% !important;
+            border: 2px solid #FF6600 !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        [data-testid="stPopover"] > div {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ستایلی لاپتۆپ */
         @media only screen and (min-width: 600px) {
             [data-testid="stPopover"] {
-                bottom: 100px;
-                right: 30px;
-                width: 55px;
-                height: 55px;
+                bottom: 110px !important;
+                right: 30px !important; /* کەمێک دوورتر لە لێوارەکە */
+                width: 60px !important;
+                height: 60px !important;
             }
             [data-testid="stPopover"]:hover {
-                transform: scale(1.1);
-                box-shadow: 0 6px 15px rgba(255, 102, 0, 0.4);
+                transform: scale(1.1) !important;
+                box-shadow: 0 6px 18px rgba(255, 102, 0, 0.4) !important;
             }
         }
 
-        /* Mobile Style */
+        /* ستایلی مۆبایل */
         @media only screen and (max-width: 600px) {
             [data-testid="stPopover"] {
-                bottom: 95px;
-                right: 15px;
-                width: 45px;
-                height: 45px;
+                bottom: 140px !important;
+                right: 20px !important;
+                width: 50px !important;
+                height: 50px !important;
             }
         }
         
         [data-testid="stPopover"] button {
-            border: none;
-            background: transparent;
-            color: #FF6600;
-            font-size: 22px;
-            padding: 0;
+            border: none !important;
+            background: transparent !important;
+            color: #FF6600 !important;
+            font-size: 24px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: 1 !important;
         }
 
-        /* Tags */
         .expert-tag {
             background-color: #fff7ed;
             color: #c2410c;
