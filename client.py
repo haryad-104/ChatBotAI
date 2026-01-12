@@ -4,12 +4,14 @@ import json
 import os
 import time
 
-# --- 1. CONFIG & SECRETS (شێوازی ڕاستەوخۆ) ---
-# تێبینی: کلیلەکانت لێرە دابنێ لەنێوان دوو کەوانەکە "..."
-SUPABASE_URL = "https://oowfvezpskatjyidwgni.supabase.co"
-SUPABASE_KEY = "sb_publishable_Wj0b2PvfmQn5T5QMlp_yHA_fVs4y4mt"
-GEMINI_API_KEY = "AIzaSyC4WC1eBy3S_QdUVrT7qz0PAn3QAhme8vE"
-
+# دەگەڕێینەوە بۆ سیستەمی Secrets بۆ پاراستن
+try:
+    SUPABASE_URL = st.secrets["SUPABASE_URL"]
+    SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+    GEMINI_API_KEY = st.secrets["GEMINI_KEY"]
+except:
+    st.error("کلیلەکان لە Secrets دابنێ")
+    st.stop()
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
