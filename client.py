@@ -4,23 +4,17 @@ import json
 import os
 import time
 
-# --- 1. CONFIG & SECRETS (سیستەمی دووانی / Hybrid) ---
-# تێبینی: سەرەتا هەوڵ دەدات لە Secrets بیهێنێت، ئەگەر نەبوو، ئەوا لەو دێڕانەی خوارەوەی دەخوێنێتەوە.
-
+# --- 1. CONFIG & SECRETS (تەنها لە Secrets دەخوێنێتەوە) ---
 try:
-    # هەوڵدان بۆ هێنان لە Secrets (ئەگەر لە Cloud داتنابن)
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
     GEMINI_API_KEY = st.secrets["GEMINI_KEY"]
-except:
-    # ئەگەر لە Secrets نەبوو، لێرە بیخوێنەرەوە (کلیلەکانت لێرە بنووسە)
-    SUPABASE_URL = "https://oowfvezpskatjyidwgni.supabase.co"
-    SUPABASE_KEY = "کلیلەکەی_خۆت_لێرە_دابنێ" 
-    GEMINI_API_KEY = "کلیلەکەی_خۆت_لێرە_دابنێ"
-
-# پشکنین بۆ دڵنیابوون
-if "کلیلەکەی_خۆت" in SUPABASE_KEY or "کلیلەکەی_خۆت" in GEMINI_API_KEY:
-    st.error("⚠️ تکایە کلیلەکانت لەناو کۆدەکە (client.py) یان لە Secrets دابنێ!")
+except FileNotFoundError:
+    st.error("🛑 کلیلەکان نەدۆزرانەوە! تکایە فایلەکەت ببەستەوە بە Secrets.")
+    st.info("لەسەر لاپتۆپ: فایلی .streamlit/secrets.toml دروست بکە.\nلە ئینتەرنێت: بچۆ Settings > Secrets.")
+    st.stop()
+except Exception as e:
+    st.error(f"هەڵەیەک هەیە: {e}")
     st.stop()
 
 HEADERS = {
@@ -29,7 +23,7 @@ HEADERS = {
     "Content-Type": "application/json"
 }
 
-# --- 2. UI & CSS HACKS (دیزاینی زیرەک بۆ مۆبایل و لاپتۆپ) ---
+# --- 2. UI & CSS HACKS (Mobile Friendly) ---
 st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -44,7 +38,7 @@ st.markdown("""
         header {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* --- دوگمەی فایل (Smart Floating Button) --- */
+        /* --- Smart Floating Button --- */
         [data-testid="stPopover"] {
             position: fixed;
             z-index: 9999;
@@ -58,7 +52,7 @@ st.markdown("""
             transition: all 0.3s ease;
         }
         
-        /* ڕێکخستن بۆ لاپتۆپ (Screen > 600px) */
+        /* Laptop Style */
         @media only screen and (min-width: 600px) {
             [data-testid="stPopover"] {
                 bottom: 100px;
@@ -72,10 +66,10 @@ st.markdown("""
             }
         }
 
-        /* ڕێکخستن بۆ مۆبایل (Screen < 600px) */
+        /* Mobile Style */
         @media only screen and (max-width: 600px) {
             [data-testid="stPopover"] {
-                bottom: 95px; /* بەرزتر بۆ ئەوەی نەکەوێتە سەر نووسین */
+                bottom: 95px;
                 right: 15px;
                 width: 45px;
                 height: 45px;
@@ -90,7 +84,7 @@ st.markdown("""
             padding: 0;
         }
 
-        /* ناوی بەشەکان */
+        /* Tags */
         .expert-tag {
             background-color: #fff7ed;
             color: #c2410c;
