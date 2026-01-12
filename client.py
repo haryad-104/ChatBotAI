@@ -4,21 +4,32 @@ import json
 import os
 import time
 
-# دەگەڕێینەوە بۆ سیستەمی Secrets بۆ پاراستن
+# --- 1. CONFIG & SECRETS (سیستەمی دووانی / Hybrid) ---
+# تێبینی: سەرەتا هەوڵ دەدات لە Secrets بیهێنێت، ئەگەر نەبوو، ئەوا لەو دێڕانەی خوارەوەی دەخوێنێتەوە.
+
 try:
+    # هەوڵدان بۆ هێنان لە Secrets (ئەگەر لە Cloud داتنابن)
     SUPABASE_URL = st.secrets["SUPABASE_URL"]
     SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
     GEMINI_API_KEY = st.secrets["GEMINI_KEY"]
 except:
-    st.error("کلیلەکان لە Secrets دابنێ")
+    # ئەگەر لە Secrets نەبوو، لێرە بیخوێنەرەوە (کلیلەکانت لێرە بنووسە)
+    SUPABASE_URL = "https://oowfvezpskatjyidwgni.supabase.co"
+    SUPABASE_KEY = "کلیلەکەی_خۆت_لێرە_دابنێ" 
+    GEMINI_API_KEY = "کلیلەکەی_خۆت_لێرە_دابنێ"
+
+# پشکنین بۆ دڵنیابوون
+if "کلیلەکەی_خۆت" in SUPABASE_KEY or "کلیلەکەی_خۆت" in GEMINI_API_KEY:
+    st.error("⚠️ تکایە کلیلەکانت لەناو کۆدەکە (client.py) یان لە Secrets دابنێ!")
     st.stop()
+
 HEADERS = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
     "Content-Type": "application/json"
 }
 
-# --- 2. UI & CSS HACKS ---
+# --- 2. UI & CSS HACKS (دیزاینی زیرەک بۆ مۆبایل و لاپتۆپ) ---
 st.set_page_config(page_title="Zirak AI", page_icon="🦁", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -33,33 +44,57 @@ st.markdown("""
         header {visibility: hidden;}
         footer {visibility: hidden;}
         
+        /* --- دوگمەی فایل (Smart Floating Button) --- */
         [data-testid="stPopover"] {
             position: fixed;
-            bottom: 80px;
-            right: 20px;
             z-index: 9999;
             background-color: white;
             border-radius: 50%;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            width: 50px;
-            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 2px solid #FF6600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        /* ڕێکخستن بۆ لاپتۆپ (Screen > 600px) */
+        @media only screen and (min-width: 600px) {
+            [data-testid="stPopover"] {
+                bottom: 100px;
+                right: 30px;
+                width: 55px;
+                height: 55px;
+            }
+            [data-testid="stPopover"]:hover {
+                transform: scale(1.1);
+                box-shadow: 0 6px 15px rgba(255, 102, 0, 0.4);
+            }
+        }
+
+        /* ڕێکخستن بۆ مۆبایل (Screen < 600px) */
+        @media only screen and (max-width: 600px) {
+            [data-testid="stPopover"] {
+                bottom: 95px; /* بەرزتر بۆ ئەوەی نەکەوێتە سەر نووسین */
+                right: 15px;
+                width: 45px;
+                height: 45px;
+            }
         }
         
         [data-testid="stPopover"] button {
             border: none;
             background: transparent;
             color: #FF6600;
-            font-size: 20px;
+            font-size: 22px;
+            padding: 0;
         }
 
+        /* ناوی بەشەکان */
         .expert-tag {
             background-color: #fff7ed;
             color: #c2410c;
-            padding: 8px 20px;
+            padding: 8px 18px;
             border-radius: 20px;
             font-size: 14px;
             font-weight: bold;
